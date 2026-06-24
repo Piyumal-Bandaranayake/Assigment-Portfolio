@@ -3,6 +3,13 @@ const express = require('express');
 const cors = require('cors');
 const { connectDB, closeDB } = require('./config/db');
 
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+const portfolioRoutes = require('./routes/portfolioRoutes');
+
+// Import error handler middleware
+const { errorHandler } = require('./middleware/errorMiddleware');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -18,6 +25,13 @@ app.get('/health', (req, res) => {
     env: process.env.NODE_ENV
   });
 });
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/portfolio', portfolioRoutes);
+
+// Global Error Handler (must be defined after other routes/middlewares)
+app.use(errorHandler);
 
 // Start server and connect to Database
 async function startServer() {
