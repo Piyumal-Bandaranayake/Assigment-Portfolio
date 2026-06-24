@@ -1,5 +1,5 @@
 const dns = require('dns');
-const { MongoClient } = require('mongodb');
+const mongoose = require('mongoose');
 
 // If the DNS is misconfigured (e.g. only pointing to 127.0.0.1 which is common on some dev setups),
 // fall back to public DNS resolvers so MongoDB Atlas SRV resolution works.
@@ -12,46 +12,25 @@ if (currentServers.length === 0 || (currentServers.length === 1 && currentServer
   }
 }
 
-const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/portfolio';
-
-let client = null;
-let db = null;
+const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/portfolio';
 
 /**
- * Connect to the MongoDB database.
- * @returns {Promise<import('mongodb').Db>} The database instance.
+ * Connect to the MongoDB database using Mongoose.
+ * @returns {Promise<import('mongoose').Connection>} The mongoose connection.
  */
 async function connectDB() {
-  if (db) {
-    return db;
-  }
-
   try {
     const maskedUri = uri.replace(/:([^:@]+)@/, ':******@');
-    console.log(`Connecting to MongoDB at: ${maskedUri}...`);
-    client = new MongoClient(uri);
+    console.log(`Connecting to MongoDB using Mongoose at: ${maskedUri}...`);
+    
+    const conn = await mongoose.connect(uri);
 
-    await client.connect();
-    db = client.db();
-
-    console.log(`MongoDB connected successfully to database`);
-    return db;
+    console.log(`MongoDB connected successfully via Mongoose: ${conn.connection.host}`);
+    return conn.connection;
   } catch (error) {
-    console.error('Failed to connect to MongoDB:', error.message);
+    console.error('Failed to connect to MongoDB using Mongoose:', error.message);
     process.exit(1);
   }
-}
-
-/**
- * Get the active database instance.
- * Throws an error if connectDB has not been called first.
- * @returns {import('mongodb').Db} The database instance.
- */
-function getDB() {
-  if (!db) {
-    throw new Error('Database has not been initialized. Please call connectDB first.');
-  }
-  return db;
 }
 
 /**
@@ -59,16 +38,15 @@ function getDB() {
  * @returns {Promise<void>}
  */
 async function closeDB() {
-  if (client) {
-    await client.close();
-    console.log('MongoDB connection closed.');
-    db = null;
-    client = null;
+  try {
+    await mongoose.connection.close();
+    console.log('Mongoose connection closed.');
+  } catch (error) {
+    console.error('Error closing Mongoose connection:', error.message);
   }
 }
 
 module.exports = {
   connectDB,
-  getDB,
   closeDB
 };
