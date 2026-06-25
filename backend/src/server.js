@@ -6,6 +6,10 @@ const { connectDB, closeDB } = require('./config/db');
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const portfolioRoutes = require('./routes/portfolioRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+
+// Cloudinary
+const { configureCloudinary } = require('./config/cloudinary');
 
 // Import error handler middleware
 const { errorHandler } = require('./middleware/errorMiddleware');
@@ -29,6 +33,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Global Error Handler (must be defined after other routes/middlewares)
 app.use(errorHandler);
@@ -36,6 +41,9 @@ app.use(errorHandler);
 // Start server and connect to Database
 async function startServer() {
   try {
+    // Initialize Cloudinary
+    configureCloudinary();
+
     // Connect to database before starting the server
     await connectDB();
 

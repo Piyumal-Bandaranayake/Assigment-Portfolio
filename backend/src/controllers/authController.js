@@ -16,31 +16,42 @@ const registerUser = async (req, res, next) => {
     return next(new Error(errorMessages));
   }
 
-  const { name, email, password } = req.body;
+  const { username, name, email, password } = req.body;
 
   try {
-    // Check if the email is already registered
-    const userExists = await User.findOne({ email });
-    if (userExists) {
+    // Check username uniqueness separately for a clear error message
+    const usernameTaken = await User.findOne({ username: username.toLowerCase() });
+    if (usernameTaken) {
       res.status(400);
-      return next(new Error('User already exists with this email'));
+      return next(new Error('Username is already taken. Please choose another.'));
     }
 
-    // Create the user (password hashing is done automatically in User pre-save middleware)
+    // Check if the email is already registered
+    const emailExists = await User.findOne({ email });
+    if (emailExists) {
+      res.status(400);
+      return next(new Error('An account with this email already exists.'));
+    }
+
+    // Create the user (password hashing done automatically in User pre-save middleware)
     const user = await User.create({
+      username,
       name,
       email,
       password,
+      // role defaults to 'user' via schema
     });
 
     if (user) {
-      // Respond with 201 Created and return token + user details
+      // Respond with 201 Created — return token + user details (no password)
       res.status(201).json({
         token: generateToken(user._id),
         user: {
           _id: user._id,
+          username: user.username,
           name: user.name,
           email: user.email,
+          role: user.role,
           createdAt: user.createdAt,
         },
       });
@@ -71,8 +82,8 @@ const loginUser = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
-    // Fetch the user by email
-    const user = await User.findOne({ email });
+    // Fetch the user by email — explicitly select password (it's hidden by default via select:false)
+    const user = await User.findOne({ email }).select('+password');
 
     // Verify user exists and the password hashes match
     if (user && (await user.matchPassword(password))) {
@@ -80,8 +91,10 @@ const loginUser = async (req, res, next) => {
         token: generateToken(user._id),
         user: {
           _id: user._id,
+          username: user.username,
           name: user.name,
           email: user.email,
+          role: user.role,
           createdAt: user.createdAt,
         },
       });
@@ -96,13 +109,13 @@ const loginUser = async (req, res, next) => {
 };
 
 /**
- * @desc    Get user profile
+ * @desc    Get current user profile
  * @route   GET /api/auth/profile
  * @access  Private (Protected)
  */
 const getUserProfile = async (req, res, next) => {
   try {
-    // req.user was fetched and attached by protect middleware
+    // req.user is attached by the protect middleware (no password field)
     if (req.user) {
       res.status(200).json(req.user);
     } else {

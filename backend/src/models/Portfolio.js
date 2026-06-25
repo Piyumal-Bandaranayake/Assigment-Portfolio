@@ -9,22 +9,16 @@ const projectSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: [true, 'Project description is required'],
-  },
-  techStack: [
-    {
-      type: String,
-      trim: true,
-    },
-  ],
-  githubLink: {
-    type: String,
     trim: true,
   },
-  liveDemo: {
-    type: String,
-    trim: true,
+  // Cloudinary image object for project thumbnail
+  image: {
+    publicId: { type: String, default: '' },
+    url: { type: String, default: '' },
   },
+  techStack: [{ type: String, trim: true }],
+  githubLink: { type: String, trim: true },
+  liveDemo: { type: String, trim: true },
 });
 
 // Experience sub-schema
@@ -39,15 +33,8 @@ const experienceSchema = new mongoose.Schema({
     required: [true, 'Role/position is required'],
     trim: true,
   },
-  duration: {
-    type: String,
-    required: [true, 'Duration is required'],
-    trim: true,
-  },
-  description: {
-    type: String,
-    trim: true,
-  },
+  duration: { type: String, trim: true },
+  description: { type: String, trim: true },
 });
 
 // Portfolio schema
@@ -64,7 +51,6 @@ const portfolioSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
-      // Standard alphanumeric username validation
       match: [
         /^[a-zA-Z0-9_-]+$/,
         'Username can only contain alphanumeric characters, underscores, and hyphens',
@@ -80,47 +66,26 @@ const portfolioSchema = new mongoose.Schema(
       required: [true, 'Professional title is required'],
       trim: true,
     },
-    bio: {
-      type: String,
-      trim: true,
-    },
+    bio: { type: String, trim: true },
+
+    // Profile image stored as Cloudinary object { publicId, url }
     profileImage: {
-      type: String,
-      trim: true,
+      publicId: { type: String, default: '' },
+      url: { type: String, default: '' },
     },
+
     contact: {
-      email: {
-        type: String,
-        trim: true,
-        lowercase: true,
-      },
-      linkedin: {
-        type: String,
-        trim: true,
-      },
-      github: {
-        type: String,
-        trim: true,
-      },
-      website: {
-        type: String,
-        trim: true,
-      },
+      email: { type: String, trim: true, lowercase: true },
+      linkedin: { type: String, trim: true },
+      github: { type: String, trim: true },
+      website: { type: String, trim: true },
     },
-    skills: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    skills: [{ type: String, trim: true }],
     projects: [projectSchema],
     experience: [experienceSchema],
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 const Portfolio = mongoose.model('Portfolio', portfolioSchema);
-
 module.exports = Portfolio;

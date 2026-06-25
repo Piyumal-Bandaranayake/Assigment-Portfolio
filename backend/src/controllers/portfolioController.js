@@ -1,4 +1,21 @@
 const Portfolio = require('../models/Portfolio');
+const {
+  deleteFromCloudinary,
+  deleteManyFromCloudinary,
+} = require('../config/cloudinary');
+
+/**
+ * Collect all Cloudinary publicIds from a portfolio document.
+ * Returns a flat array of non-empty strings.
+ */
+const collectPublicIds = (portfolio) => {
+  const ids = [];
+  if (portfolio.profileImage?.publicId) ids.push(portfolio.profileImage.publicId);
+  (portfolio.projects || []).forEach((p) => {
+    if (p.image?.publicId) ids.push(p.image.publicId);
+  });
+  return ids;
+};
 
 /**
  * @desc    Create a portfolio
@@ -26,37 +43,42 @@ const createPortfolio = async (req, res, next) => {
 
     const cleanUsername = username.trim().toLowerCase();
 
-    // 1. Prevent duplicate username
+    // Prevent duplicate username
     const usernameExists = await Portfolio.findOne({ username: cleanUsername });
     if (usernameExists) {
       res.status(400);
       return next(new Error('Username is already taken'));
     }
 
-    // 2. Prevent duplicate portfolio per user (Standard practice: 1 portfolio per user account)
+    // Prevent duplicate portfolio per user (1 portfolio per account)
     const userPortfolioExists = await Portfolio.findOne({ user: req.user._id });
     if (userPortfolioExists) {
       res.status(400);
-      return next(new Error('You already have a portfolio. Please update it instead.'));
+      return next(
+        new Error('You already have a portfolio. Please update it instead.')
+      );
     }
 
-    // 3. Create the portfolio associated with the logged-in user
+    // profileImage arrives as { publicId, url } from the frontend
     const portfolio = await Portfolio.create({
       user: req.user._id,
       username: cleanUsername,
       fullName,
       title,
       bio,
-      profileImage,
+      profileImage: profileImage || { publicId: '', url: '' },
       contact,
       skills,
-      projects,
+      projects: (projects || []).map((p) => ({
+        ...p,
+        image: p.image || { publicId: '', url: '' },
+      })),
       experience,
     });
 
     res.status(201).json(portfolio);
   } catch (error) {
-    res.status(400); // Mongoose validation error
+    res.status(400);
     return next(error);
   }
 };
@@ -69,10 +91,10 @@ const createPortfolio = async (req, res, next) => {
 const getPortfolioByUsername = async (req, res, next) => {
   try {
     const cleanUsername = req.params.username.trim().toLowerCase();
-
-    // Find the portfolio and populate owner details (name, email)
-    const portfolio = await Portfolio.findOne({ username: cleanUsername })
-      .populate('user', 'name email');
+    const portfolio = await Portfolio.findOne({ username: cleanUsername }).populate(
+      'user',
+      'name email username'
+    );
 
     if (!portfolio) {
       res.status(404);
@@ -94,8 +116,6 @@ const getPortfolioByUsername = async (req, res, next) => {
 const updatePortfolio = async (req, res, next) => {
   try {
     const cleanUsername = req.params.username.trim().toLowerCase();
-
-    // Find the portfolio first to check owner permissions
     const portfolio = await Portfolio.findOne({ username: cleanUsername });
 
     if (!portfolio) {
@@ -103,13 +123,13 @@ const updatePortfolio = async (req, res, next) => {
       return next(new Error('Portfolio not found'));
     }
 
-    // Verify ownership: Only the portfolio owner can update
+    // Verify ownership
     if (portfolio.user.toString() !== req.user._id.toString()) {
       res.status(403);
       return next(new Error('Not authorized to update this portfolio'));
     }
 
-    // If username is being changed, check if new username is unique
+    // Username uniqueness check if changing username
     if (req.body.username) {
       const newUsername = req.body.username.trim().toLowerCase();
       if (newUsername !== portfolio.username) {
@@ -122,7 +142,30 @@ const updatePortfolio = async (req, res, next) => {
       }
     }
 
-    // Update other fields if provided in request body
+    // If profile image is being replaced, delete the old Cloudinary asset
+    if (
+      req.body.profileImage &&
+      req.body.profileImage.publicId !== portfolio.profileImage?.publicId &&
+      portfolio.profileImage?.publicId
+    ) {
+      await deleteFromCloudinary(portfolio.profileImage.publicId);
+    }
+
+    // If individual project images are being replaced, delete old assets
+    if (req.body.projects && Array.isArray(req.body.projects)) {
+      const oldProjects = portfolio.projects || [];
+      req.body.projects.forEach((newProject, i) => {
+        const oldProject = oldProjects[i];
+        if (
+          oldProject?.image?.publicId &&
+          newProject?.image?.publicId !== oldProject.image.publicId
+        ) {
+          deleteFromCloudinary(oldProject.image.publicId).catch(() => {});
+        }
+      });
+    }
+
+    // Apply all updated fields
     const fieldsToUpdate = [
       'fullName',
       'title',
@@ -143,21 +186,19 @@ const updatePortfolio = async (req, res, next) => {
     const updatedPortfolio = await portfolio.save();
     res.status(200).json(updatedPortfolio);
   } catch (error) {
-    res.status(400); // Mongoose validation error
+    res.status(400);
     return next(error);
   }
 };
 
 /**
- * @desc    Delete portfolio
+ * @desc    Delete portfolio (also removes all associated Cloudinary images)
  * @route   DELETE /api/portfolio/:username
  * @access  Private
  */
 const deletePortfolio = async (req, res, next) => {
   try {
     const cleanUsername = req.params.username.trim().toLowerCase();
-
-    // Find the portfolio to check permissions
     const portfolio = await Portfolio.findOne({ username: cleanUsername });
 
     if (!portfolio) {
@@ -165,18 +206,23 @@ const deletePortfolio = async (req, res, next) => {
       return next(new Error('Portfolio not found'));
     }
 
-    // Verify ownership: Only the portfolio owner can delete
+    // Verify ownership
     if (portfolio.user.toString() !== req.user._id.toString()) {
       res.status(403);
       return next(new Error('Not authorized to delete this portfolio'));
     }
 
-    // Use deleteOne to trigger any mongoose hooks/middleware if needed
+    // Delete all Cloudinary images associated with this portfolio
+    const publicIds = collectPublicIds(portfolio);
+    if (publicIds.length > 0) {
+      await deleteManyFromCloudinary(publicIds);
+    }
+
     await portfolio.deleteOne();
 
     res.status(200).json({
       success: true,
-      message: 'Portfolio deleted successfully',
+      message: 'Portfolio and all associated images deleted successfully',
     });
   } catch (error) {
     res.status(500);
