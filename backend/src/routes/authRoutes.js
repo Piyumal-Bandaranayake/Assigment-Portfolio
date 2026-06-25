@@ -11,9 +11,20 @@ const router = express.Router();
 
 // Input validation rules for registration
 const registerValidation = [
-  check('name', 'Name is required').notEmpty(),
-  check('email', 'Please include a valid email address').isEmail().normalizeEmail(),
-  check('password', 'Password must be at least 6 characters').isLength({ min: 6 }),
+  check('username', 'Username is required')
+    .notEmpty()
+    .trim(),
+  check('username', 'Username must be at least 3 characters')
+    .isLength({ min: 3 }),
+  check('username', 'Username can only contain lowercase letters, numbers, underscores and hyphens')
+    .matches(/^[a-z0-9_-]+$/),
+  check('name', 'Name is required')
+    .notEmpty(),
+  check('email', 'Please include a valid email address')
+    .isEmail()
+    .normalizeEmail(),
+  check('password', 'Password must be at least 6 characters')
+    .isLength({ min: 6 }),
 ];
 
 // Input validation rules for login
