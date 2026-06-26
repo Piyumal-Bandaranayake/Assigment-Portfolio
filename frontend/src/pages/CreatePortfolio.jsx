@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  FiCheckCircle,
-  FiAlertCircle,
-  FiLoader,
   FiEye,
   FiSave,
   FiCheck,
@@ -13,6 +11,8 @@ import ContactSection from '../components/portfolio/ContactSection';
 import SkillsSection from '../components/portfolio/SkillsSection';
 import ProjectsSection from '../components/portfolio/ProjectsSection';
 import ExperienceSection from '../components/portfolio/ExperienceSection';
+import Toast from '../components/Toast';
+import { usePortfolio } from '../context/PortfolioContext';
 
 /* ─────────────────────────────────────────
    Progress Step Indicator
@@ -60,34 +60,7 @@ const ProgressIndicator = ({ currentStep }) => (
   </div>
 );
 
-/* ─────────────────────────────────────────
-   Toast Notification
-───────────────────────────────────────── */
-const Toast = ({ type, message, onClose }) => {
-  if (!message) return null;
-  return (
-    <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-xl text-sm font-medium transition-all duration-300 ${
-        type === 'success'
-          ? 'bg-green-50 border border-green-200 text-green-800'
-          : 'bg-red-50 border border-red-200 text-red-800'
-      }`}
-    >
-      {type === 'success' ? (
-        <FiCheckCircle className="text-green-500 text-lg shrink-0" />
-      ) : (
-        <FiAlertCircle className="text-red-500 text-lg shrink-0" />
-      )}
-      {message}
-      <button
-        onClick={onClose}
-        className="ml-2 text-gray-400 hover:text-gray-600 transition-colors"
-      >
-        ✕
-      </button>
-    </div>
-  );
-};
+/* Toast component imported from ../components/Toast */
 
 /* ─────────────────────────────────────────
    Validation helpers
@@ -113,12 +86,23 @@ const defaultForm = {
 };
 
 const CreatePortfolio = () => {
+  const navigate = useNavigate();
+  const { portfolioData, setPortfolioData } = usePortfolio();
+
   const [currentStep] = useState(1);
   const [form, setForm] = useState(defaultForm);
   const [skills, setSkills] = useState([]);
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: '', message: '' });
+
+  /* ── Restore form from context when returning from preview ── */
+  useEffect(() => {
+    if (portfolioData) {
+      const { skills: ctxSkills, ...ctxForm } = portfolioData;
+      setForm((prev) => ({ ...prev, ...ctxForm }));
+      if (ctxSkills) setSkills(ctxSkills);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Field change helpers ── */
   const setField = (field, value) => {
@@ -238,8 +222,8 @@ const CreatePortfolio = () => {
     setTimeout(() => setToast({ type: '', message: '' }), 4000);
   };
 
-  /* ── Submit: Register user → get JWT → create portfolio ── */
-  const handleSubmit = async (e) => {
+  /* ── Preview: Validate → set context → navigate to /preview ── */
+  const handlePreview = (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) {
@@ -249,58 +233,9 @@ const CreatePortfolio = () => {
       return;
     }
 
-    setIsSubmitting(true);
-
-    try {
-      // ── Step 1: Register the user account ──────────────────────────
-      const registerRes = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: form.username,
-          name: form.fullName,
-          email: form.contact.email,
-          password: form.password,
-        }),
-      });
-
-      const registerData = await registerRes.json();
-      if (!registerRes.ok) {
-        throw new Error(registerData.message || 'Registration failed');
-      }
-
-      const token = registerData.token;
-
-      // ── Step 2: Create the portfolio with the JWT token ────────────
-      const { confirmPassword: _ignored, password: _pw, ...formData } = form;
-      const portfolioPayload = { ...formData, skills };
-
-      const portfolioRes = await fetch('/api/portfolio', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(portfolioPayload),
-      });
-
-      const portfolioData = await portfolioRes.json();
-      if (!portfolioRes.ok) {
-        throw new Error(portfolioData.message || 'Portfolio creation failed');
-      }
-
-      // Save token for future requests (e.g. image deletion)
-      localStorage.setItem('portfolio_token', token);
-
-      showToast('success', '🎉 Account created and portfolio published!');
-      setForm(defaultForm);
-      setSkills([]);
-      setErrors({});
-    } catch (err) {
-      showToast('error', err.message || 'Something went wrong. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Store full form data (including password for the publish step) in context
+    setPortfolioData({ ...form, skills });
+    navigate('/preview');
   };
 
   /* ── Save Draft ── */
@@ -333,7 +268,7 @@ const CreatePortfolio = () => {
         <ProgressIndicator currentStep={currentStep} />
 
         {/* ── Form ── */}
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handlePreview} noValidate>
           <div className="flex flex-col gap-6">
 
             <PersonalInfoSection
@@ -383,20 +318,10 @@ const CreatePortfolio = () => {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg hover:shadow-blue-200 hover:shadow-xl transition-all duration-200 active:scale-95"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-blue-200 hover:shadow-xl transition-all duration-200 active:scale-95"
               >
-                {isSubmitting ? (
-                  <>
-                    <FiLoader className="animate-spin" />
-                    Submitting…
-                  </>
-                ) : (
-                  <>
-                    <FiEye />
-                    Preview Portfolio
-                  </>
-                )}
+                <FiEye />
+                Preview Portfolio
               </button>
             </div>
 
