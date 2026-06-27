@@ -9,6 +9,7 @@ import {
   FiBriefcase,
   FiMapPin
 } from 'react-icons/fi';
+import SkillIcon from './SkillIcon';
 
 /* ── Hero Section ────────────────────────────────────────── */
 const HeroSection = ({ fullName, title, bio, profileImage, contact }) => (
@@ -140,8 +141,8 @@ const SkillsDisplay = ({ skills }) => {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
           {skills.map((skill, index) => (
             <div key={skill} className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-blue-300/50 hover:border-blue-300 p-6 border border-white/60 flex flex-col items-center justify-center transition-all duration-300 hover:-translate-y-1.5 hover:scale-105">
-              <div className="w-16 h-16 bg-blue-100/80 text-blue-700 rounded-xl flex items-center justify-center mb-4 border border-blue-200 shadow-inner">
-                <FiCode className="text-3xl" />
+              <div className="w-16 h-16 bg-blue-100/80 text-blue-700 rounded-xl flex items-center justify-center mb-4 border border-blue-200 shadow-inner p-3 overflow-hidden">
+                <SkillIcon skill={skill} className="w-full h-full object-contain" fallbackClassName="text-3xl" />
               </div>
               <h3 className="font-extrabold text-slate-800 text-sm text-center uppercase tracking-wide">{skill}</h3>
             </div>
