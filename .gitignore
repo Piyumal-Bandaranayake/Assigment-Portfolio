@@ -1,5 +1,4 @@
 # IDEs and editors
-.vscode/
 .idea/
 *.suo
 *.ntvs*
@@ -19,8 +18,8 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Local env files
-.env
 .env*.local
 
 # Node modules (fallback for root level if any)
 node_modules/
+config.bat

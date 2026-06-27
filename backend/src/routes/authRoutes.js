@@ -29,7 +29,7 @@ const registerValidation = [
 
 // Input validation rules for login
 const loginValidation = [
-  check('email', 'Please include a valid email address').isEmail().normalizeEmail(),
+  check('username', 'Username is required').notEmpty().trim(),
   check('password', 'Password is required').notEmpty(),
 ];
 

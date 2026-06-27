@@ -13,25 +13,23 @@ import {
   FiUser,
 } from 'react-icons/fi';
 import Toast from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user, token, logout } = useAuth();
   const [portfolio, setPortfolio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toast, setToast] = useState({ type: '', message: '' });
 
-  const token = localStorage.getItem('portfolio_token');
-  const username = localStorage.getItem('portfolio_username');
-  const fullName = localStorage.getItem('portfolio_fullName');
+  const username = user?.username;
+  const fullName = user?.name;
 
-  /* ── Redirect if not logged in ── */
+  /* ── Fetch portfolio data ── */
   useEffect(() => {
-    if (!token || !username) {
-      navigate('/', { replace: true });
-      return;
-    }
+    if (!username) return;
 
     const fetchPortfolio = async () => {
       try {
@@ -48,7 +46,7 @@ const Dashboard = () => {
     };
 
     fetchPortfolio();
-  }, [token, username, navigate]);
+  }, [username]);
 
   /* ── Toast helpers ── */
   const showToast = (type, message) => setToast({ type, message });
@@ -84,9 +82,7 @@ const Dashboard = () => {
       }
 
       showToast('success', '🗑️ Portfolio deleted successfully.');
-      localStorage.removeItem('portfolio_token');
-      localStorage.removeItem('portfolio_username');
-      localStorage.removeItem('portfolio_fullName');
+      logout();
 
       setTimeout(() => navigate('/', { replace: true }), 1500);
     } catch (err) {
@@ -98,9 +94,7 @@ const Dashboard = () => {
 
   /* ── Logout ── */
   const handleLogout = () => {
-    localStorage.removeItem('portfolio_token');
-    localStorage.removeItem('portfolio_username');
-    localStorage.removeItem('portfolio_fullName');
+    logout();
     navigate('/', { replace: true });
   };
 
