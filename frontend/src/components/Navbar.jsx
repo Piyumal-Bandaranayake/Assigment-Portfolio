@@ -123,12 +123,7 @@ const Navbar = () => {
                   >
                     Dashboard
                   </NavLink>
-                  <NavLink
-                    to="/create"
-                    className={({ isActive }) => (isActive ? linkActive : linkBase)}
-                  >
-                    Create Portfolio
-                  </NavLink>
+
 
                   {/* ── User Dropdown ── */}
                   <div className="relative" ref={dropdownRef}>
@@ -306,20 +301,7 @@ const Navbar = () => {
                     <FiGrid className="text-base" />
                     Dashboard
                   </NavLink>
-                  <NavLink
-                    to="/create"
-                    onClick={closeMobile}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'
-                      }`
-                    }
-                  >
-                    <FiEdit3 className="text-base" />
-                    Create Portfolio
-                  </NavLink>
+
                   <Link
                     to={`/portfolio/${user?.username}`}
                     onClick={closeMobile}

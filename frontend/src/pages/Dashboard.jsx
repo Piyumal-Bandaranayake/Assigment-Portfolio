@@ -181,7 +181,7 @@ const Dashboard = () => {
 
           {/* Edit Portfolio */}
           <Link
-            to="/create"
+            to={`/edit/${username}`}
             className="flex items-center gap-3 px-6 py-4 bg-white hover:bg-indigo-50 border border-gray-200 hover:border-indigo-300 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 group"
           >
             <div className="w-10 h-10 rounded-xl bg-indigo-100 group-hover:bg-indigo-200 flex items-center justify-center transition-colors">
