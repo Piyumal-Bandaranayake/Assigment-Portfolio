@@ -27,3 +27,13 @@ body {
 .animate-scale-up {
   animation: scaleUp 0.2s ease-out;
 }
+
+/* ── Navbar dropdown animation ── */
+@keyframes dropdown {
+  from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-dropdown {
+  animation: dropdown 0.15s ease-out;
+}
+
