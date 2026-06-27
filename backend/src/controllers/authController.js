@@ -79,11 +79,11 @@ const loginUser = async (req, res, next) => {
     return next(new Error(errorMessages));
   }
 
-  const { email, password } = req.body;
+  const { username, password } = req.body;
 
   try {
-    // Fetch the user by email — explicitly select password (it's hidden by default via select:false)
-    const user = await User.findOne({ email }).select('+password');
+    // Fetch the user by username — explicitly select password (it's hidden by default via select:false)
+    const user = await User.findOne({ username: username.toLowerCase() }).select('+password');
 
     // Verify user exists and the password hashes match
     if (user && (await user.matchPassword(password))) {
@@ -100,7 +100,7 @@ const loginUser = async (req, res, next) => {
       });
     } else {
       res.status(401);
-      return next(new Error('Invalid email or password'));
+      return next(new Error('Invalid username or password'));
     }
   } catch (error) {
     res.status(500);
