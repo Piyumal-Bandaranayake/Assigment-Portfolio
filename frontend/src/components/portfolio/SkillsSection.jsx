@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FiCode, FiPlus, FiX } from 'react-icons/fi';
+import SkillIcon from './SkillIcon';
 
 const SKILL_COLORS = [
   'bg-blue-100 text-blue-700 border-blue-200',
@@ -74,6 +75,7 @@ const SkillsSection = ({ skills, onSkillsChange, error }) => {
                 SKILL_COLORS[index % SKILL_COLORS.length]
               } transition-all`}
             >
+              <SkillIcon skill={skill} className="w-4 h-4 object-contain" fallbackClassName="text-sm" />
               {skill}
               <button
                 type="button"
