@@ -1,9 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { PortfolioProvider } from './context/PortfolioContext';
+import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
+import Login from './pages/Login';
 import CreatePortfolio from './pages/CreatePortfolio';
 import PreviewPortfolio from './pages/PreviewPortfolio';
 import PublicPortfolio from './pages/PublicPortfolio';
@@ -21,20 +24,30 @@ const AppLayout = () => {
     location.pathname.startsWith('/portfolio/') ||
     location.pathname === '/preview';
 
-  return (
-    <div className={isStandalone ? '' : 'flex flex-col min-h-screen bg-gray-50'}>
+  // Login page uses its own full-screen layout — hide Navbar/Footer
+  const isLoginPage = location.pathname === '/login';
 
-      {/* Sticky Global Navigation (hidden on standalone pages) */}
-      {!isStandalone && <Navbar />}
+  return (
+    <div className={isStandalone || isLoginPage ? '' : 'flex flex-col min-h-screen bg-gray-50'}>
+
+      {/* Sticky Global Navigation (hidden on standalone & login pages) */}
+      {!isStandalone && !isLoginPage && <Navbar />}
 
       {/* Dynamic Route Pages */}
-      <main className={isStandalone ? '' : 'flex-grow'}>
+      <main className={isStandalone || isLoginPage ? '' : 'flex-grow'}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/create" element={<CreatePortfolio />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/preview" element={<PreviewPortfolio />} />
-          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/portfolio/:username" element={<PublicPortfolio />} />
+
+          <Route path="/create" element={<CreatePortfolio />} />
+
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/edit/:username" element={<CreatePortfolio />} />
+          </Route>
 
           {/* Fallback 404 Route */}
           <Route
@@ -59,8 +72,8 @@ const AppLayout = () => {
         </Routes>
       </main>
 
-      {/* Global Footer (hidden on standalone pages) */}
-      {!isStandalone && <Footer />}
+      {/* Global Footer (hidden on standalone & login pages) */}
+      {!isStandalone && !isLoginPage && <Footer />}
 
     </div>
   );
@@ -69,9 +82,11 @@ const AppLayout = () => {
 function App() {
   return (
     <Router>
-      <PortfolioProvider>
-        <AppLayout />
-      </PortfolioProvider>
+      <AuthProvider>
+        <PortfolioProvider>
+          <AppLayout />
+        </PortfolioProvider>
+      </AuthProvider>
     </Router>
   );
 }
