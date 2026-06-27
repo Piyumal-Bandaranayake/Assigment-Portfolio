@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiSend, FiArrowLeft, FiLoader } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 import { usePortfolio } from '../context/PortfolioContext';
 import PortfolioLayout from '../components/portfolio/PortfolioLayout';
 import Toast from '../components/Toast';
@@ -8,6 +9,7 @@ import Toast from '../components/Toast';
 const PreviewPortfolio = () => {
   const navigate = useNavigate();
   const { portfolioData, clearPortfolioData } = usePortfolio();
+  const { isAuthenticated, user, token } = useAuth();
   const [isPublishing, setIsPublishing] = useState(false);
   const [toast, setToast] = useState({ type: '', message: '' });
 
@@ -34,26 +36,30 @@ const PreviewPortfolio = () => {
     setIsPublishing(true);
 
     try {
-      /* Step 1: Register the user account */
-      const registerRes = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: portfolioData.username,
-          name: portfolioData.fullName,
-          email: portfolioData.contact.email,
-          password: portfolioData.password,
-        }),
-      });
+      let currentToken = token;
 
-      const registerData = await registerRes.json();
-      if (!registerRes.ok) {
-        throw new Error(registerData.message || 'Registration failed');
+      if (!isAuthenticated) {
+        /* Step 1: Register the user account (only if not already logged in) */
+        const registerRes = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: portfolioData.username,
+            name: portfolioData.fullName,
+            email: portfolioData.contact.email,
+            password: portfolioData.password,
+          }),
+        });
+
+        const registerData = await registerRes.json();
+        if (!registerRes.ok) {
+          throw new Error(registerData.message || 'Registration failed');
+        }
+
+        currentToken = registerData.token;
       }
 
-      const token = registerData.token;
-
-      /* Step 2: Create the portfolio with the JWT token */
+      /* Step 2: Create or Update the portfolio with the JWT token */
       const {
         password: _pw,
         confirmPassword: _cpw,
@@ -61,28 +67,33 @@ const PreviewPortfolio = () => {
       } = portfolioData;
 
       const portfolioPayload = { ...formFields };
+      
+      const apiUrl = isAuthenticated ? `/api/portfolio/${user?.username}` : '/api/portfolio';
+      const apiMethod = isAuthenticated ? 'PUT' : 'POST';
 
-      const portfolioRes = await fetch('/api/portfolio', {
-        method: 'POST',
+      const portfolioRes = await fetch(apiUrl, {
+        method: apiMethod,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${currentToken}`,
         },
         body: JSON.stringify(portfolioPayload),
       });
 
       const portfolioResult = await portfolioRes.json();
       if (!portfolioRes.ok) {
-        throw new Error(portfolioResult.message || 'Portfolio creation failed');
+        throw new Error(portfolioResult.message || `Portfolio ${isAuthenticated ? 'update' : 'creation'} failed`);
       }
 
-      /* Step 3: Store auth data in localStorage */
-      localStorage.setItem('portfolio_token', token);
-      localStorage.setItem('portfolio_username', portfolioData.username);
-      localStorage.setItem('portfolio_fullName', portfolioData.fullName);
+      /* Step 3: Store auth data in localStorage if new user */
+      if (!isAuthenticated) {
+        localStorage.setItem('portfolio_token', currentToken);
+        localStorage.setItem('portfolio_username', portfolioData.username);
+        localStorage.setItem('portfolio_fullName', portfolioData.fullName);
+      }
 
       /* Step 4: Show success toast */
-      showToast('success', '🎉 Your portfolio has been published successfully!');
+      showToast('success', `🎉 Your portfolio has been ${isAuthenticated ? 'updated' : 'published'} successfully!`);
 
       /* Step 5: Clear context and redirect after a brief delay */
       setTimeout(() => {
